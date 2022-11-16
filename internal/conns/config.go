@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/aws/aws-sdk-go-v2/service/auditmanager"
 	"github.com/aws/aws-sdk-go-v2/service/comprehend"
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer"
 	"github.com/aws/aws-sdk-go-v2/service/fis"
@@ -203,6 +204,12 @@ func (c *Config) ConfigureProvider(ctx context.Context, client *AWSClient) (*AWS
 	client.ReverseDNSPrefix = ReverseDNS(DNSSuffix)
 	client.Session = sess
 	client.TerraformVersion = c.TerraformVersion
+
+	client.AuditManagerClient = auditmanager.NewFromConfig(cfg, func(o *auditmanager.Options) {
+		if endpoint := c.Endpoints[names.AuditManager]; endpoint != "" {
+			o.EndpointResolver = auditmanager.EndpointResolverFromURL(endpoint)
+		}
+	})
 
 	client.ComprehendClient = comprehend.NewFromConfig(cfg, func(o *comprehend.Options) {
 		if endpoint := c.Endpoints[names.Comprehend]; endpoint != "" {
