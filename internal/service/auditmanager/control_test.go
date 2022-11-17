@@ -82,6 +82,58 @@ func TestAccAuditManagerControl_disappears(t *testing.T) {
 	})
 }
 
+func TestAccAuditManagerControl_tags(t *testing.T) {
+	var control types.Control
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+	resourceName := "aws_auditmanager_control.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acctest.PreCheck(t)
+			acctest.PreCheckPartitionHasService(names.AuditManagerEndpointID, t)
+			testAccPreCheckControl(t)
+		},
+		ErrorCheck:               acctest.ErrorCheck(t, names.AuditManagerEndpointID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckControlDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccControlConfig_tags1(rName, "key1", "value1"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckControlExists(resourceName, &control),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key1", "value1"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			{
+				Config: testAccControlConfig_tags2(rName, "key1", "value1updated", "key2", "value2"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckControlExists(resourceName, &control),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key1", "value1updated"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key2", "value2"),
+				),
+			},
+			{
+				Config: testAccControlConfig_tags1(rName, "key2", "value2"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckControlExists(resourceName, &control),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key2", "value2"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckControlDestroy(s *terraform.State) error {
 	ctx := context.Background()
 	conn := acctest.Provider.Meta().(*conns.AWSClient).AuditManagerClient
@@ -157,4 +209,41 @@ resource "aws_auditmanager_control" "test" {
   }
 }
 `, rName)
+}
+
+func testAccControlConfig_tags1(rName, tagKey1, tagValue1 string) string {
+	return fmt.Sprintf(`
+resource "aws_auditmanager_control" "test" {
+  name = %[1]q
+
+  control_mapping_sources {
+    source_name          = %[1]q
+    source_set_up_option = "Procedural_Controls_Mapping"
+    source_type          = "MANUAL"
+  }
+
+  tags = {
+    %[2]q = %[3]q
+  }
+}
+`, rName, tagKey1, tagValue1)
+}
+
+func testAccControlConfig_tags2(rName, tagKey1, tagValue1, tagKey2, tagValue2 string) string {
+	return fmt.Sprintf(`
+resource "aws_auditmanager_control" "test" {
+  name = %[1]q
+
+  control_mapping_sources {
+    source_name          = %[1]q
+    source_set_up_option = "Procedural_Controls_Mapping"
+    source_type          = "MANUAL"
+  }
+
+  tags = {
+    %[2]q = %[3]q
+    %[4]q = %[5]q
+  }
+}
+`, rName, tagKey1, tagValue1, tagKey2, tagValue2)
 }
